@@ -81,7 +81,16 @@ curl -X PUT http://localhost:5000/api/usuarios/1 \
   -d '{"nome": "Maria S. Oliveira"}'
 
 # Lista das 10 funcionalidades
-1 Cadastrar Usuario 2 Listar Usuario 3 Excluir Usuario 4 Editar Usuario 5 Cadastrar lembrete de estudo 6 Listar lembrete de estudo 7 Excluir lembrete de estudo 8 Editar lembrete de estudo 9 Upload de Arquivo 10 Editar Arquivo etc
+1-Cadastrar Usuario
+2-Listar Usuario 
+3-Excluir Usuario 
+4-Editar Usuario 
+5-Cadastrar lembrete de estudo
+6-Listar lembrete de estudo 
+7-Excluir lembrete de estudo 
+8-Editar lembrete de estudo 
+9-Upload de Arquivo 
+10-Editar Arquivo etc
 
 # Excluir usuário (id 1)
 curl -X DELETE http://localhost:5000/api/usuarios/1
