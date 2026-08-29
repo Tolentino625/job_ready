@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobReady — Currículos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar" id="sidebar" data-active="curriculos"></aside>
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>Currículos</h1>
+        <p>Envie seu currículo em PDF, imagem ou documento e mantenha o anexo salvo na plataforma.</p>
+      </div>
+      <button class="btn btn-primary" id="btn-novo">+ Novo</button>
+    </div>
+
+    <div class="alert" id="crud-alert" style="display:none;"></div>
+
+    <table id="curriculo-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Usuário</th>
+          <th>Arquivo</th>
+          <th>Anexo</th>
+          <th>Enviado em</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty-state" id="empty-state" style="display:none;">Nenhum currículo cadastrado ainda.</div>
+
+    <div class="modal-backdrop" id="crud-modal-backdrop">
+      <div class="modal">
+        <h2 id="crud-modal-title">Novo Currículo</h2>
+        <form id="curriculo-form">
+          <div class="field">
+            <label>ID do usuário</label>
+            <input type="number" name="usuario_id" required min="1">
+          </div>
+
+          <div class="field">
+            <label>Anexo do currículo</label>
+            <div class="file-picker">
+              <input id="arquivo" type="file" name="arquivo" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.txt,.rtf,.odt,.heic">
+              <label for="arquivo" class="file-picker-label">Escolher arquivo</label>
+              <span id="file-name">Nenhum arquivo selecionado</span>
+            </div>
+            <small class="field-help">PDF, imagens ou documentos. Tamanho máximo: 10 MB.</small>
+          </div>
+
+          <div class="field">
+            <label>Conteúdo extraído / observações</label>
+            <textarea name="conteudo_texto" placeholder="Opcional"></textarea>
+          </div>
+          <div class="field">
+            <label>Pontos fortes</label>
+            <textarea name="pontos_fortes" placeholder="Opcional"></textarea>
+          </div>
+          <div class="field">
+            <label>Pontos a melhorar</label>
+            <textarea name="pontos_a_melhorar" placeholder="Opcional"></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="btn-cancelar">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="btn-salvar">Salvar currículo</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/nav.js"></script>
+<script>
+if (exigirLogin()) {
+  const apiUrl = `${API_BASE_URL}/api/curriculos`;
+  const tableBody = document.querySelector("#curriculo-table tbody");
+  const emptyState = document.getElementById("empty-state");
+  const modalBackdrop = document.getElementById("crud-modal-backdrop");
+  const modalTitle = document.getElementById("crud-modal-title");
+  const form = document.getElementById("curriculo-form");
+  const alertBox = document.getElementById("crud-alert");
+  const btnSalvar = document.getElementById("btn-salvar");
+  const fileInput = document.getElementById("arquivo");
+  const fileName = document.getElementById("file-name");
+  let items = [];
+  let editingId = null;
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+  }
+
+  function showAlert(msg, type = "error") {
+    alertBox.textContent = msg;
+    alertBox.className = `alert alert-${type}`;
+    alertBox.style.display = "block";
+    clearTimeout(showAlert.timer);
+    showAlert.timer = setTimeout(() => alertBox.style.display = "none", 5000);
+  }
+
+  function formatDate(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString("pt-BR");
+  }
+
+  function render() {
+    tableBody.innerHTML = "";
+    emptyState.style.display = items.length ? "none" : "block";
+    items.forEach(item => {
+      const tr = document.createElement("tr");
+      const attachment = item.tem_anexo
+        ? `<button class="btn btn-secondary btn-sm" data-action="open-file" data-id="${item.id}">Abrir</button>`
+        : `<span class="badge">Sem anexo</span>`;
+      tr.innerHTML = `
+        <td>${item.id}</td>
+        <td>${item.usuario_id}</td>
+        <td>${escapeHtml(item.nome_arquivo)}</td>
+        <td>${attachment}</td>
+        <td>${escapeHtml(formatDate(item.enviado_em))}</td>
+        <td class="actions-cell">
+          <button class="btn btn-secondary btn-sm" data-action="edit" data-id="${item.id}">Editar</button>
+          <button class="btn btn-danger btn-sm" data-action="delete" data-id="${item.id}">Excluir</button>
+        </td>`;
+      tableBody.appendChild(tr);
+    });
+  }
+
+  async function carregar() {
+    try {
+      const res = await fetch(apiUrl, { headers: authHeaders() });
+      if (res.status === 401) { limparSessao(); window.location.replace("login.html"); return; }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.erro || "Não foi possível carregar os currículos.");
+      items = data;
+      render();
+    } catch (error) {
+      showAlert(error.message || `Não foi possível conectar à API em ${API_BASE_URL}.`);
+    }
+  }
+
+  function abrir(item = null) {
+    editingId = item ? item.id : null;
+    modalTitle.textContent = item ? "Editar Currículo" : "Novo Currículo";
+    form.reset();
+    fileName.textContent = "Nenhum arquivo selecionado";
+    if (item) {
+      form.usuario_id.value = item.usuario_id ?? "";
+      form.conteudo_texto.value = item.conteudo_texto ?? "";
+      form.pontos_fortes.value = item.pontos_fortes ?? "";
+      form.pontos_a_melhorar.value = item.pontos_a_melhorar ?? "";
+      if (item.nome_arquivo) fileName.textContent = `Anexo atual: ${item.nome_arquivo}`;
+    }
+    modalBackdrop.classList.add("open");
+  }
+
+  function fechar() {
+    modalBackdrop.classList.remove("open");
+    editingId = null;
+  }
+
+  async function salvar(event) {
+    event.preventDefault();
+    const dados = new FormData();
+    dados.append("usuario_id", form.usuario_id.value);
+    dados.append("conteudo_texto", form.conteudo_texto.value);
+    dados.append("pontos_fortes", form.pontos_fortes.value);
+    dados.append("pontos_a_melhorar", form.pontos_a_melhorar.value);
+    if (fileInput.files[0]) dados.append("arquivo", fileInput.files[0]);
+    else if (!editingId) dados.append("nome_arquivo", "curriculo-sem-anexo");
+
+    btnSalvar.disabled = true;
+    btnSalvar.textContent = "Salvando...";
+    try {
+      const url = editingId ? `${apiUrl}/${editingId}` : apiUrl;
+      const res = await fetch(url, {
+        method: editingId ? "PUT" : "POST",
+        headers: authHeaders(),
+        body: dados,
+      });
+      if (res.status === 401) { limparSessao(); window.location.replace("login.html"); return; }
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.erro || "Não foi possível salvar o currículo.");
+      showAlert(editingId ? "Currículo atualizado com sucesso." : "Currículo enviado com sucesso.", "success");
+      fechar();
+      await carregar();
+    } catch (error) {
+      showAlert(error.message || "Erro ao salvar o currículo.");
+    } finally {
+      btnSalvar.disabled = false;
+      btnSalvar.textContent = "Salvar currículo";
+    }
+  }
+
+  async function abrirArquivo(id) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/curriculos/${id}/arquivo`, { headers: authHeaders() });
+      if (res.status === 401) { limparSessao(); window.location.replace("login.html"); return; }
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload.erro || "Não foi possível abrir o anexo.");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      showAlert(error.message || "Não foi possível abrir o anexo.");
+    }
+  }
+
+  async function excluir(id) {
+    if (!confirm("Tem certeza que deseja excluir este currículo e seu anexo?")) return;
+    try {
+      const res = await fetch(`${apiUrl}/${id}`, { method: "DELETE", headers: authHeaders() });
+      if (res.status === 401) { limparSessao(); window.location.replace("login.html"); return; }
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.erro || "Não foi possível excluir.");
+      showAlert("Currículo excluído com sucesso.", "success");
+      carregar();
+    } catch (error) { showAlert(error.message); }
+  }
+
+  document.getElementById("btn-novo").addEventListener("click", () => abrir());
+  document.getElementById("btn-cancelar").addEventListener("click", fechar);
+  modalBackdrop.addEventListener("click", e => { if (e.target === modalBackdrop) fechar(); });
+  form.addEventListener("submit", salvar);
+  fileInput.addEventListener("change", () => {
+    fileName.textContent = fileInput.files[0] ? fileInput.files[0].name : "Nenhum arquivo selecionado";
+  });
+  tableBody.addEventListener("click", e => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const item = items.find(i => i.id === Number(btn.dataset.id));
+    if (!item) return;
+    if (btn.dataset.action === "edit") abrir(item);
+    if (btn.dataset.action === "delete") excluir(item.id);
+    if (btn.dataset.action === "open-file") abrirArquivo(item.id);
+  });
+
+  carregar();
+}
+</script>
+</body>
+</html>

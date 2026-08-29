@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobReady — Perguntas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar" id="sidebar" data-active="perguntas"></aside>
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>Perguntas</h1>
+        <p>Banco de perguntas frequentes usadas nas simulações.</p>
+      </div>
+      <button class="btn btn-ai" id="btn-gerar-perguntas">✦ Gerar perguntas com IA</button>
+    </div>
+
+    <div class="alert" id="crud-alert" style="display:none;"></div>
+
+    <table id="crud-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Pergunta</th>
+          <th>Categoria</th>
+          <th>Dificuldade</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty-state" id="empty-state" style="display:none;">Nenhum registro cadastrado ainda.</div>
+
+
+    <div class="modal-backdrop" id="gerar-modal-backdrop">
+      <div class="modal">
+        <h2>Gerar perguntas com Gemini</h2>
+        <p class="modal-description">Escolha os parâmetros e o Gemini criará perguntas de entrevista automaticamente.</p>
+        <form id="gerar-form">
+          <div class="field">
+            <label>Quantidade</label>
+            <select name="quantidade">
+              <option value="3">3 perguntas</option>
+              <option value="5" selected>5 perguntas</option>
+              <option value="10">10 perguntas</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Categoria</label>
+            <select name="categoria">
+              <option value="comportamental">Comportamental</option>
+              <option value="tecnica">Técnica</option>
+              <option value="situacional">Situacional</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Dificuldade</label>
+            <select name="dificuldade">
+              <option value="facil">Fácil</option>
+              <option value="media" selected>Média</option>
+              <option value="dificil">Difícil</option>
+            </select>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="btn-cancelar-geracao">Cancelar</button>
+            <button type="submit" class="btn btn-ai" id="btn-confirmar-geracao">Gerar agora</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="crud-modal-backdrop">
+      <div class="modal">
+        <h2 id="crud-modal-title">Novo Pergunta</h2>
+        <form id="crud-form">
+          <div class="field">
+            <label>Texto da pergunta</label>
+            <textarea name="texto" required></textarea>
+          </div>
+          <div class="field">
+            <label>Categoria</label>
+            <select name="categoria">
+              <option value="comportamental">comportamental</option>
+              <option value="tecnica">tecnica</option>
+              <option value="situacional">situacional</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Dificuldade</label>
+            <select name="dificuldade">
+              <option value="facil">facil</option>
+              <option value="media">media</option>
+              <option value="dificil">dificil</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Sugestão de resposta</label>
+            <textarea name="sugestao_resposta"></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="btn-cancelar">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/crud.js"></script>
+<script>
+const btnGerar = document.getElementById("btn-gerar-perguntas");
+const gerarBackdrop = document.getElementById("gerar-modal-backdrop");
+const gerarForm = document.getElementById("gerar-form");
+const btnCancelarGeracao = document.getElementById("btn-cancelar-geracao");
+const btnConfirmarGeracao = document.getElementById("btn-confirmar-geracao");
+
+btnGerar.addEventListener("click", () => gerarBackdrop.classList.add("open"));
+btnCancelarGeracao.addEventListener("click", () => gerarBackdrop.classList.remove("open"));
+gerarBackdrop.addEventListener("click", (e) => {
+  if (e.target === gerarBackdrop) gerarBackdrop.classList.remove("open");
+});
+
+gerarForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const dados = Object.fromEntries(new FormData(gerarForm).entries());
+  btnConfirmarGeracao.disabled = true;
+  btnConfirmarGeracao.textContent = "Gerando...";
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/perguntas/gerar`, {
+      method: "POST",
+      headers: authHeaders({"Content-Type": "application/json"}),
+      body: JSON.stringify({...dados, quantidade: Number(dados.quantidade)})
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.erro || "Não foi possível gerar as perguntas.");
+    gerarBackdrop.classList.remove("open");
+    window.location.reload();
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    btnConfirmarGeracao.disabled = false;
+    btnConfirmarGeracao.textContent = "Gerar agora";
+  }
+});
+
+initCrudPage({
+  resourcePath: "/api/perguntas",
+  singular: "Pergunta",
+  columns: [
+    { key: "id", label: "ID" },
+    { key: "texto", label: "Pergunta" },
+    { key: "categoria", label: "Categoria" },
+    { key: "dificuldade", label: "Dificuldade" }
+  ],
+  fields: [
+    { name: "texto", type: "textarea" },
+    { name: "categoria", type: "select" },
+    { name: "dificuldade", type: "select" },
+    { name: "sugestao_resposta", type: "textarea" }
+  ],
+});
+</script>
+</body>
+</html>

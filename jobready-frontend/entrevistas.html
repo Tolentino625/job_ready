@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobReady — Entrevistas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar" id="sidebar" data-active="entrevistas"></aside>
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>Entrevistas</h1>
+        <p>Simulações de entrevista realizadas pelos usuários.</p>
+      </div>
+      <button class="btn btn-primary" id="btn-novo">+ Novo</button>
+    </div>
+
+    <div class="alert" id="crud-alert" style="display:none;"></div>
+
+    <table id="crud-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>ID do usuário</th>
+          <th>Tipo</th>
+          <th>Status</th>
+          <th>Pontuação</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty-state" id="empty-state" style="display:none;">Nenhum registro cadastrado ainda.</div>
+
+    <div class="modal-backdrop" id="crud-modal-backdrop">
+      <div class="modal">
+        <h2 id="crud-modal-title">Novo Entrevista</h2>
+        <form id="crud-form">
+          <div class="field">
+            <label>ID do usuário</label>
+            <input type="number" name="usuario_id" required>
+          </div>
+          <div class="field">
+            <label>Tipo</label>
+            <select name="tipo">
+              <option value="texto">texto</option>
+              <option value="voz">voz</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select name="status">
+              <option value="em_andamento">em_andamento</option>
+              <option value="concluida">concluida</option>
+              <option value="cancelada">cancelada</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Pontuação geral (0-10)</label>
+            <input type="number" name="pontuacao_geral">
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="btn-cancelar">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/crud.js"></script>
+<script>
+initCrudPage({
+  resourcePath: "/api/entrevistas",
+  singular: "Entrevista",
+  columns: [
+    { key: "id", label: "ID" },
+    { key: "usuario_id", label: "ID do usuário" },
+    { key: "tipo", label: "Tipo" },
+    { key: "status", label: "Status" },
+    { key: "pontuacao_geral", label: "Pontuação" }
+  ],
+  fields: [
+    { name: "usuario_id", type: "number" },
+    { name: "tipo", type: "select" },
+    { name: "status", type: "select" },
+    { name: "pontuacao_geral", type: "number" }
+  ],
+});
+</script>
+</body>
+</html>
